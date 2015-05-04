@@ -1,0 +1,111 @@
+// This version of the script was written by Josh Ansbridge on 01/03/2015 after being ported from Arduino Uno written the day prior. 
+// V001 has a working buzzer, keypad and relay control.
+// all devices are powered from 2 x 6v Batteries
+
+
+// This #include statement was automatically added by the Spark IDE.
+#include "Keypad/Keypad.h"
+
+
+//set our code
+char* ourCode = "1234";
+int currentPosition = 0;
+int codeenteredincorrectly = 0; //if this value turns to 1 then we know they have gone wrong at some point and should not unlock.
+
+const byte ROWS = 4; //four rows
+const byte COLS = 3; //three columns
+char keys[ROWS][COLS] = {
+  {'1','2','3'},
+  {'4','5','6'},
+  {'7','8','9'},
+  {'*','0','#'}
+};
+byte rowPins[ROWS] = {0, 1, 2, 3}; //connect to the row pinouts of the keypad
+byte colPins[COLS] = {4, 5, 6}; //connect to the column pinouts of the keypad
+
+Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
+
+void setup(){
+  Serial.begin(9600);
+  pinMode(D7, OUTPUT);
+  pinMode(A0, OUTPUT);
+  beep(50);
+  beep(50);
+  beep(50);
+  delay(1000);
+}
+
+void loop(){
+    int l;
+  char key = keypad.getKey();
+
+  if (key != NO_KEY){
+    beep(50); 
+    Serial.println("");
+    
+    for (l=0; l<=currentPosition; ++l)
+    {
+            Serial.print("*");
+    }
+   
+   
+   if (key == ourCode[currentPosition])
+      {
+        ++currentPosition;
+        if ((currentPosition == 4) && (codeenteredincorrectly != 1))
+        {
+          beep(5000);
+          unlockDoor();
+          currentPosition = 0;
+        }
+      } else {
+        //invalidCode();
+        codeenteredincorrectly = 1;
+        //continue any way because we don't want them to know it wasn't correct until the 4th attempt.
+        
+       // ++currentPosition;
+        if ((currentPosition == 4))
+        {
+            Spark.publish("CODEENTERED","Wrong Code Entered");  
+          Serial.println("Wrong Code");
+          wrongbeep(1000);
+          currentPosition = 0;
+          codeenteredincorrectly = 0;
+        }                  
+        
+      } 
+    
+      //Serial.println(key);
+    
+ 
+           
+     }}
+     
+     
+void unlockDoor(){
+
+Spark.publish("CODEENTERED","Correct Code Entered");   
+Serial.println("Correct Code");       
+digitalWrite(A0, HIGH);   // power the lock relay (HIGH is the voltage level)
+Serial.println("Unlocked");
+delay(5000);              // wait for a second
+digitalWrite(A0, LOW);    // turn the lock off (Low Voltage)
+Serial.println("Locked");
+  
+}
+
+void beep(unsigned char delayms){
+  digitalWrite(D7, 5);      // Almost any value can be used except 0 and 255
+                           // experiment to get the best tone
+  delay(delayms);          // wait for a delayms ms
+  digitalWrite(D7, 0);       // 0 turns it off
+  delay(delayms);          // wait for a delayms ms   
+}
+
+void wrongbeep(unsigned char delayms){
+  digitalWrite(D7, 60);      // Almost any value can be used except 0 and 255
+                           // experiment to get the best tone
+  delay(delayms);          // wait for a delayms ms
+  digitalWrite(D7, 0);       // 0 turns it off
+  delay(delayms);          // wait for a delayms ms   
+} 
